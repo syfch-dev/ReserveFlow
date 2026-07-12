@@ -1,0 +1,17 @@
+.DS_Store
+
+# JetBrains
+.idea/
+
+# Rider user files
+*.suo
+*.user
+*.userosscache
+*.sln.docstates
+
+# Build artifacts
+bin/
+obj/
+
+# Logs
+*.log

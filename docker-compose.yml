@@ -1,0 +1,20 @@
+services:
+  postgres:
+    image: postgres:16-alpine
+    container_name: reserveflow-postgres
+    environment:
+      POSTGRES_USER: reserveflow
+      POSTGRES_PASSWORD: reserveflow
+      POSTGRES_DB: reserveflow
+    ports:
+      - "5432:5432"
+    volumes:
+      - reserveflow_pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U reserveflow -d reserveflow"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+
+volumes:
+  reserveflow_pgdata:

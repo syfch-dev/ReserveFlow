@@ -1,0 +1,26 @@
+<Project Sdk="Microsoft.NET.Sdk.Web">
+
+  <PropertyGroup>
+    <TargetFramework>net10.0</TargetFramework>
+    <Nullable>enable</Nullable>
+    <ImplicitUsings>enable</ImplicitUsings>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <!-- analyzers: XML comment source generator, OpenApi 2.7.5+ ile CS0200 üretir -->
+    <PackageReference Include="Microsoft.AspNetCore.OpenApi" Version="10.0.9">
+      <ExcludeAssets>analyzers</ExcludeAssets>
+    </PackageReference>
+    <!-- GHSA-v5pm-xwqc-g5wc; AspNetCore.OpenApi 10 ile uyumlu patched 2.x -->
+    <PackageReference Include="Microsoft.OpenApi" Version="2.7.5" />
+    <PackageReference Include="Microsoft.EntityFrameworkCore.Design" Version="10.0.9">
+      <PrivateAssets>all</PrivateAssets>
+      <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
+    </PackageReference>
+  </ItemGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\ReserveFlow.Infrastructure\ReserveFlow.Infrastructure.csproj" />
+  </ItemGroup>
+
+</Project>
