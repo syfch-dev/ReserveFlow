@@ -2,6 +2,7 @@
 
 # JetBrains
 .idea/
+.cursor/
 
 # Rider user files
 *.suo
@@ -15,3 +16,6 @@ obj/
 
 # Logs
 *.log
+
+# VS Code
+.vscode/
