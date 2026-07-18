@@ -1,6 +1,7 @@
 using FluentValidation;
 using ReserveFlow.Application.Abstractions.Authentication;
 using ReserveFlow.Application.Exceptions;
+using ReserveFlow.Application.Messaging;
 using ReserveFlow.Domain.Abstractions;
 using ReserveFlow.Domain.Shared;
 using ReserveFlow.Domain.Users;
@@ -8,18 +9,30 @@ using ValidationException = ReserveFlow.Application.Exceptions.ValidationExcepti
 
 namespace ReserveFlow.Application.Users.RegisterUser;
 
-public static class RegisterUserCommandHandler
+public class RegisterUserCommandHandler:ICommandHandler<RegisterUserCommand,Guid>
 {
-    public static async Task<Guid> Handle(
-        RegisterUserCommand command,
-        IValidator<RegisterUserCommand> validator,
-        IUserRepository users,
+    private readonly IValidator<RegisterUserCommand> _validator;
+    private readonly IUserRepository _userRepository;
+    private readonly IPasswordHasher _passwordHasher;
+    private readonly TimeProvider _timeProvider;
+    private readonly IUnitOfWork _unitOfWork;
+
+    public RegisterUserCommandHandler( IValidator<RegisterUserCommand> validator,
+        IUserRepository userRepository,
         IPasswordHasher passwordHasher,
         TimeProvider timeProvider,
-        IUnitOfWork unitOfWork,
-        CancellationToken cancellationToken)
+        IUnitOfWork unitOfWork)
     {
-        var validation = await validator.ValidateAsync(command, cancellationToken);
+        _validator = validator;
+        _userRepository = userRepository;
+        _passwordHasher = passwordHasher;
+        _timeProvider = timeProvider;
+        _unitOfWork = unitOfWork;
+    }
+
+    public async Task<Guid> HandleAsync(RegisterUserCommand command, CancellationToken cancellationToken)
+    {
+        var validation = await _validator.ValidateAsync(command, cancellationToken);
         if (!validation.IsValid)
         {
             throw new ValidationException(string.Join(" ", validation.Errors.Select(e => e.ErrorMessage)));
@@ -35,17 +48,18 @@ public static class RegisterUserCommandHandler
             throw new ValidationException(ex.Message);
         }
 
-        if (await users.ExistsByEmailAsync(email, cancellationToken))
+        if (await _userRepository.ExistsByEmailAsync(email, cancellationToken))
         {
             throw new ConflictException("Email is already registered.");
         }
 
-        var passwordHash = passwordHasher.Hash(command.Password);
-        var user = User.Register(email, passwordHash, timeProvider.GetUtcNow().UtcDateTime);
+        var passwordHash = _passwordHasher.Hash(command.Password);
+        var user = User.Register(email, passwordHash, _timeProvider.GetUtcNow().UtcDateTime);
 
-        users.Add(user);
-        await unitOfWork.SaveChangesAsync(cancellationToken);
+        _userRepository.Add(user);
+        await _unitOfWork.SaveChangesAsync(cancellationToken);
 
         return user.Id;
+        
     }
 }
