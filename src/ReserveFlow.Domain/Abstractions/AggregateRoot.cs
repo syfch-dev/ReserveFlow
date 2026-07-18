@@ -1,4 +1,6 @@
-namespace ReserveFlow.Domain.Shared;
+using ReserveFlow.Domain.Shared;
+
+namespace ReserveFlow.Domain.Abstractions;
 
 public abstract class AggregateRoot : Entity
 {

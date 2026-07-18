@@ -1,3 +1,4 @@
+using ReserveFlow.Domain.Abstractions;
 using ReserveFlow.Domain.Shared;
 
 namespace ReserveFlow.Booking.Tests;

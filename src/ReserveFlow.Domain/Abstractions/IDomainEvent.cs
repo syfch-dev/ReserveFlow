@@ -1,4 +1,4 @@
-namespace ReserveFlow.Domain.Shared;
+namespace ReserveFlow.Domain.Abstractions;
 
 public interface IDomainEvent
 {

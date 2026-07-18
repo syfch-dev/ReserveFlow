@@ -1,4 +1,5 @@
 using NetArchTest.Rules;
+using ReserveFlow.Domain.Abstractions;
 using ReserveFlow.Domain.Shared;
 
 namespace ReserveFlow.Architecture.Tests;
