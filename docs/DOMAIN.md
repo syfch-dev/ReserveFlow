@@ -1,6 +1,6 @@
-# ReserveFlow — Domain Modeli
+# ReserveFlow — Domain Model
 
-## Bounded Context Haritası
+## Bounded Context Map
 
 ```mermaid
 flowchart TB
@@ -44,16 +44,16 @@ flowchart TB
   booking --> notification
 ```
 
-## Context Sorumlulukları
+## Context Responsibilities
 
-| Context | Sorumluluk | Aggregate Root'lar |
+| Context | Responsibility | Aggregate Roots |
 |---------|------------|-------------------|
-| **Identity** | Kimlik doğrulama, rol yönetimi | `User` |
-| **Catalog** | Etkinlik vitrini, bilet tipi tanımı | `Event`, `OrganizerProfile` |
-| **Scheduling** | Randevu takvimi, müsaitlik | `Provider`, `Appointment` |
-| **Booking** | Rezervasyon iş kuralları, sipariş | `Order`, `Reservation` |
-| **Payment** | Tahsilat ve iade | `Payment` |
-| **Notification** | Async bildirim | `OutboxMessage` |
+| **Identity** | Authentication, role management | `User` |
+| **Catalog** | Event catalog, ticket type definition | `Event`, `OrganizerProfile` |
+| **Scheduling** | Appointment scheduling, availability | `Provider`, `Appointment` |
+| **Booking** | Reservation business rules, orders | `Order`, `Reservation` |
+| **Payment** | Payment collection and refunds | `Payment` |
+| **Notification** | Asynchronous notifications | `OutboxMessage` |
 
 ---
 
@@ -71,10 +71,10 @@ User
 └── CreatedAt: DateTime
 ```
 
-**İş kuralları:**
-- Email benzersiz olmalı
-- Şifre hash'lenmiş saklanmalı (plain text yok)
-- Suspended kullanıcı giriş yapamaz
+**Business rules:**
+- Email must be unique
+- Passwords must be stored as hashes (no plaintext)
+- Suspended users cannot sign in
 
 ### Role (Entity)
 
@@ -94,10 +94,10 @@ Role
 ```text
 OrganizerProfile
 ├── Id: OrganizerId
-├── UserId: UserId (Identity context referansı)
+├── UserId: UserId (Identity context reference)
 ├── DisplayName: string
 ├── Bio: string?
-└── Events: EventId[] (sadece ID referansı)
+└── Events: EventId[] (ID references only)
 ```
 
 ### Venue (Entity)
@@ -127,13 +127,13 @@ Event
 └── PublishedAt: DateTime?
 ```
 
-**İş kuralları:**
-- Sadece `Draft` durumdaki etkinlik düzenlenebilir
-- `Published` olmak için en az 1 aktif TicketType gerekli
-- StartAt < EndAt olmalı
-- Geçmiş tarihli etkinlik publish edilemez
+**Business rules:**
+- Only events in `Draft` status can be edited
+- At least one active TicketType is required for an event to become `Published`
+- StartAt must be earlier than EndAt
+- An event with a past date cannot be published
 
-### TicketType (Entity — Event aggregate içinde)
+### TicketType (Entity — within the Event aggregate)
 
 ```text
 TicketType
@@ -147,10 +147,10 @@ TicketType
 └── IsActive: bool
 ```
 
-**İş kuralları:**
-- `SoldCount <= Quota` her zaman
-- Satış penceresi dışında bilet satılamaz
-- Quota 0'a indiğinde satış durur
+**Business rules:**
+- `SoldCount <= Quota` at all times
+- Tickets cannot be sold outside the sales window
+- Sales stop when Quota reaches 0
 
 **Domain Events:**
 - `EventPublished`
@@ -184,7 +184,7 @@ WeeklyAvailability
 └── IsActive: bool
 ```
 
-### TimeSlot (Entity — hesaplanan veya persist edilen)
+### TimeSlot (Entity — computed or persisted)
 
 ```text
 TimeSlot
@@ -211,10 +211,10 @@ Appointment
 └── CancelledAt: DateTime?
 ```
 
-**İş kuralları:**
-- Aynı provider için overlapping slot rezerve edilemez
-- İptal: etkinlikten 24 saat öncesine kadar (policy value object)
-- Sadece `Confirmed` randevu tamamlanabilir
+**Business rules:**
+- Overlapping slots cannot be booked for the same provider
+- Cancellation: permitted up to 24 hours before the event (policy value object)
+- Only a `Confirmed` appointment can be completed
 
 **Domain Events:**
 - `AppointmentBooked`
@@ -238,9 +238,9 @@ Reservation
 └── OrderId: OrderId?
 ```
 
-**İş kuralları:**
-- Pending rezervasyon `ExpiresAt` sonrası otomatik expire olur
-- Confirm ancak ödeme başarılı olduktan sonra
+**Business rules:**
+- A Pending reservation automatically expires after `ExpiresAt`
+- Confirmation occurs only after a successful payment
 
 ### Order (Aggregate Root)
 
@@ -269,7 +269,7 @@ OrderLine
 └── LineTotal: Money
 ```
 
-### Ticket (Entity — Order confirm sonrası)
+### Ticket (Entity — after Order confirmation)
 
 ```text
 Ticket
@@ -277,15 +277,15 @@ Ticket
 ├── OrderId: OrderId
 ├── EventId: EventId
 ├── TicketTypeId: TicketTypeId
-├── TicketCode: string (unique, QR için)
+├── TicketCode: string (unique, for QR)
 ├── HolderName: string
 └── IssuedAt: DateTime
 ```
 
-**İş kuralları:**
-- Aynı `IdempotencyKey` ile gelen istek aynı sonucu döner
-- Order confirm → Ticket issue (event) veya Appointment confirm (appointment)
-- Çift satış: optimistic concurrency veya DB unique constraint ile engellenir
+**Business rules:**
+- A request with the same `IdempotencyKey` returns the same result
+- Order confirmation → Ticket issuance (event) or Appointment confirmation (appointment)
+- Double-selling is prevented through optimistic concurrency or a database unique constraint
 
 **Domain Events:**
 - `OrderCreated`
@@ -313,10 +313,10 @@ Payment
 └── CompletedAt: DateTime?
 ```
 
-**İş kuralları:**
+**Business rules:**
 - Fake gateway: configurable success/failure/timeout
 - Payment timeout → Order `Expired`
-- Başarılı payment → `OrderConfirmed` event
+- Successful payment → `OrderConfirmed` event
 
 **Domain Events:**
 - `PaymentCompleted`
@@ -390,7 +390,7 @@ DateRange
 
 ---
 
-## Context'ler Arası İletişim
+## Inter-Context Communication
 
 ### Domain Events (async)
 
@@ -411,17 +411,17 @@ DateRange
 
 ---
 
-## DDD Kuralları
+## DDD Rules
 
-1. Her aggregate tek repository üzerinden değişir.
-2. Aggregate dışına sadece ID referansı çıkar; entity referansı taşınmaz.
-3. Application service ince kalır; iş kuralı domain entity/value object içindedir.
-4. Cross-context işlemler domain event veya orchestration saga ile yapılır.
-5. Infrastructure concern'ler (EF Core, Redis, HTTP) domain katmanına girmez.
+1. Each aggregate is modified through a single repository.
+2. Only ID references cross aggregate boundaries; entity references are not passed.
+3. Application services remain thin; business rules reside in domain entities/value objects.
+4. Cross-context operations are performed through domain events or orchestration sagas.
+5. Infrastructure concerns (EF Core, Redis, HTTP) do not enter the domain layer.
 
 ---
 
-## ER Diyagramı (Özet)
+## ER Diagram (Summary)
 
 ```mermaid
 erDiagram

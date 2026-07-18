@@ -1,46 +1,46 @@
-# ReserveFlow — Use Case Kataloğu
+# ReserveFlow — Use Case Catalog
 
-Use case'ler **ürün backlog'u değil**, mimari laboratuvar deneyi listesidir.
+Use cases are **not a product backlog**; they are a list of architectural laboratory experiments.
 
-**Ekleme kuralı:** Yeni use case ancak (1) bir bounded context sınırını veya aggregate kuralını egzersizliyorsa ve (2) `docs/NFR.md` içindeki bir NFR'yi doğrulayacaksa eklenir — `docs/PROJECT.md` scope guardrail ile aynı.
+**Inclusion rule:** A new use case is added only if (1) it exercises a bounded context boundary or aggregate rule and (2) it validates an NFR in `docs/NFR.md` — the same scope guardrail defined in `docs/PROJECT.md`.
 
-Application katmanında her use case ≈ bir command/query handler (ör. `CreateReservation`). Bu katalog klasör/handler isimlendirmesinin kaynağıdır.
+In the Application layer, each use case ≈ one command/query handler (e.g., `CreateReservation`). This catalog is the source of truth for folder and handler naming.
 
-İlgili dokümanlar: [PROJECT.md](PROJECT.md) · [DOMAIN.md](DOMAIN.md) · [NFR.md](NFR.md) · [STRUCTURE.md](STRUCTURE.md)
+Related documents: [PROJECT.md](PROJECT.md) · [DOMAIN.md](DOMAIN.md) · [NFR.md](NFR.md) · [STRUCTURE.md](STRUCTURE.md)
 
 ---
 
-## Aktörler
+## Actors
 
-| Aktör | Rol |
+| Actor | Role |
 |-------|-----|
-| Customer | Bilet alır, randevu alır |
-| Organizer | Etkinlik / TicketType yönetir |
-| Provider | Müsaitlik ve randevu yönetir |
-| Admin | Liste + doluluk raporu |
-| System | Expire, outbox, retry (background) |
+| Customer | Purchases tickets and books appointments |
+| Organizer | Manages Events / TicketTypes |
+| Provider | Manages availability and appointments |
+| Admin | Lists + occupancy reports |
+| System | Expiration, outbox, retry (background) |
 
 ---
 
-## Şablon
+## Template
 
-Her use case aşağıdaki alanlarla tanımlanır:
+Each use case is defined by the following fields:
 
-| Alan | Açıklama |
+| Field | Description |
 |------|----------|
-| **ID** | Benzersiz kimlik (`UC-*`) |
-| **Aktör** | Tetikleyen rol |
-| **Özet** | Tek cümle |
-| **Ana akış** | 3–7 adım |
-| **Domain** | Kurallar / domain event'ler |
-| **NFR** | Hedef NFR ID'leri |
-| **Faz** | F1–F7 |
+| **ID** | Unique identifier (`UC-*`) |
+| **Actor** | Triggering role |
+| **Summary** | One sentence |
+| **Main Flow** | 3–7 steps |
+| **Domain** | Rules / domain events |
+| **NFR** | Target NFR IDs |
+| **Phase** | F1–F7 |
 
 ---
 
-## Kritik dikey dilimler (önce bunlar)
+## Critical Vertical Slices (Implement These First)
 
-Laboratuvarın omurga senaryoları — tek tek CRUD değil, context geçişli akışlar.
+The laboratory's core scenarios — cross-context flows rather than isolated CRUD operations.
 
 ```mermaid
 sequenceDiagram
@@ -64,290 +64,290 @@ sequenceDiagram
   end
 ```
 
-### UC-CORE-01 — Etkinlik bileti satışı (happy path)
+### UC-CORE-01 — Event Ticket Sale (Happy Path)
 
-| Alan | Değer |
+| Field | Value |
 |------|-------|
-| **Aktör** | Customer |
-| **Özet** | Publish edilmiş Event + TicketType için sipariş verilir; ödeme başarılı olunca bilet üretilir ve bildirim kuyruğa alınır. |
-| **Ana akış** | 1. Customer publish Event ve aktif TicketType seçer. 2. `Order` + `Reservation` oluşturulur (`IdempotencyKey`). 3. Catalog'da kota rezerve edilir (`SoldCount++` veya hold). 4. Fake payment success. 5. Order `Confirmed` → `Ticket` issue. 6. `OrderConfirmed` / `TicketIssued` outbox'a yazılır. |
-| **Domain** | Catalog ↔ Booking ↔ Payment ↔ Notification sınırları; event'ler: `OrderCreated`, `PaymentCompleted`, `OrderConfirmed`, `TicketIssued`. |
+| **Actor** | Customer |
+| **Summary** | An order is placed for a published Event + TicketType; once payment succeeds, a ticket is issued and a notification is queued. |
+| **Main Flow** | 1. Customer selects a published Event and an active TicketType. 2. `Order` + `Reservation` are created (`IdempotencyKey`). 3. Quota is reserved in Catalog (`SoldCount++` or hold). 4. Fake payment succeeds. 5. Order becomes `Confirmed` → `Ticket` is issued. 6. `OrderConfirmed` / `TicketIssued` are written to the outbox. |
+| **Domain** | Catalog ↔ Booking ↔ Payment ↔ Notification boundaries; events: `OrderCreated`, `PaymentCompleted`, `OrderConfirmed`, `TicketIssued`. |
 | **NFR** | NFR-M02, NFR-R02, NFR-R04, NFR-O02 |
-| **Faz** | F1 (domain), F4 (idempotency/outbox), F5 (trace) |
+| **Phase** | F1 (domain), F4 (idempotency/outbox), F5 (trace) |
 
-### UC-CORE-02 — Randevu rezervasyonu (happy path)
+### UC-CORE-02 — Appointment Booking (Happy Path)
 
-| Alan | Değer |
+| Field | Value |
 |------|-------|
-| **Aktör** | Customer |
-| **Özet** | Provider müsait slot'undan randevu alınır; ödeme sonrası Appointment confirm olur. |
-| **Ana akış** | 1. Customer Provider ve müsait slot seçer. 2. Scheduling'de `Appointment` (Pending) + Booking'de Order/Reservation. 3. Fake payment success. 4. Appointment `Confirmed`; bildirim outbox. |
-| **Domain** | Scheduling overlap kuralı; Booking orchestration; event'ler: `AppointmentBooked`, `OrderConfirmed`. |
+| **Actor** | Customer |
+| **Summary** | An appointment is booked from a Provider's available slot; the Appointment is confirmed after payment. |
+| **Main Flow** | 1. Customer selects a Provider and an available slot. 2. An `Appointment` (Pending) is created in Scheduling + an Order/Reservation in Booking. 3. Fake payment succeeds. 4. Appointment becomes `Confirmed`; notification is written to the outbox. |
+| **Domain** | Scheduling overlap rule; Booking orchestration; events: `AppointmentBooked`, `OrderConfirmed`. |
 | **NFR** | NFR-R01, NFR-P01, NFR-R04 |
-| **Faz** | F1, F3 (slot liste), F4 |
+| **Phase** | F1, F3 (slot listing), F4 |
 
-### UC-CORE-03 — Çift satış / overlap yarışı
+### UC-CORE-03 — Double-Selling / Overlap Race
 
-| Alan | Değer |
+| Field | Value |
 |------|-------|
-| **Aktör** | Customer (eşzamanlı) |
-| **Özet** | Aynı TicketType kontenjanına veya aynı TimeSlot'a iki eşzamanlı istek; yalnızca biri kazanır. |
-| **Ana akış** | 1. İki istek aynı anda Order/Appointment oluşturmayı dener. 2. Optimistic concurrency veya unique constraint birini reddeder. 3. Kaybeden istek anlamlı hata alır; kota/slot tutarlı kalır. |
-| **Domain** | Aggregate tutarlılığı; `SoldCount <= Quota`; provider overlap yok. |
+| **Actor** | Customer (concurrent) |
+| **Summary** | Two concurrent requests target the same TicketType capacity or TimeSlot; only one succeeds. |
+| **Main Flow** | 1. Two requests attempt to create an Order/Appointment simultaneously. 2. Optimistic concurrency or a unique constraint rejects one. 3. The losing request receives a meaningful error; the quota/slot remains consistent. |
+| **Domain** | Aggregate consistency; `SoldCount <= Quota`; no Provider overlap. |
 | **NFR** | NFR-R01 |
-| **Faz** | F4 |
+| **Phase** | F4 |
 
-### UC-CORE-04 — Idempotent yeniden deneme
+### UC-CORE-04 — Idempotent Retry
 
-| Alan | Değer |
+| Field | Value |
 |------|-------|
-| **Aktör** | Customer / client retry |
-| **Özet** | Aynı `IdempotencyKey` ile Order veya Payment tekrarı aynı sonucu döner; yan etki yok. |
-| **Ana akış** | 1. İlk istek Order oluşturur. 2. Aynı key ile ikinci istek gelir. 3. Mevcut Order/Payment döner; ek kota düşümü veya ikinci charge yok. |
-| **Domain** | `Order.IdempotencyKey`, `Payment.IdempotencyKey` unique. |
+| **Actor** | Customer / client retry |
+| **Summary** | Repeating an Order or Payment with the same `IdempotencyKey` returns the same result without side effects. |
+| **Main Flow** | 1. The first request creates an Order. 2. A second request arrives with the same key. 3. The existing Order/Payment is returned; there is no additional quota decrement or second charge. |
+| **Domain** | `Order.IdempotencyKey`, `Payment.IdempotencyKey` are unique. |
 | **NFR** | NFR-R02 |
-| **Faz** | F4 |
+| **Phase** | F4 |
 
-### UC-CORE-05 — Ödeme timeout / fail → expire → kota/slot serbest
+### UC-CORE-05 — Payment Timeout / Failure → Expiration → Quota/Slot Release
 
-| Alan | Değer |
+| Field | Value |
 |------|-------|
-| **Aktör** | System (+ Customer tetikleyen ödeme) |
-| **Özet** | Fake gateway fail veya timeout sonrası Order expire olur; Catalog kota veya Scheduling slot serbest bırakılır. |
-| **Ana akış** | 1. Payment fail/timeout. 2. `PaymentFailed` → Booking Order `Expired`/`Cancelled`. 3. Catalog SoldCount geri alınır veya Scheduling slot Available olur. 4. Gerekirse outbox bildirim. |
-| **Domain** | Event zinciri / basit saga: `PaymentFailed`, `OrderExpired`; consumer: Catalog, Scheduling. |
+| **Actor** | System (+ Customer-triggered payment) |
+| **Summary** | After a fake gateway failure or timeout, the Order expires and the Catalog quota or Scheduling slot is released. |
+| **Main Flow** | 1. Payment fails/times out. 2. `PaymentFailed` → Booking Order becomes `Expired`/`Cancelled`. 3. Catalog SoldCount is rolled back or the Scheduling slot becomes Available. 4. An outbox notification is created if needed. |
+| **Domain** | Event chain / simple saga: `PaymentFailed`, `OrderExpired`; consumers: Catalog, Scheduling. |
 | **NFR** | NFR-R03, NFR-R05, NFR-R04 |
-| **Faz** | F4 |
+| **Phase** | F4 |
 
 ---
 
 ## Identity
 
-### UC-ID-01 — Kayıt (Customer)
+### UC-ID-01 — Registration (Customer)
 
-| Alan | Değer |
+| Field | Value |
 |------|-------|
-| **Aktör** | Customer (anonim) |
-| **Özet** | E-posta + şifre ile kullanıcı kaydı. |
-| **Ana akış** | 1. Register isteği validate edilir. 2. Email benzersiz kontrolü. 3. Şifre hash'lenir; User `Active` + rol `Customer`. |
-| **Domain** | Email VO; plain text şifre yok. |
+| **Actor** | Customer (anonymous) |
+| **Summary** | User registration with email + password. |
+| **Main Flow** | 1. The registration request is validated. 2. Email uniqueness is checked. 3. The password is hashed; User is `Active` + role is `Customer`. |
+| **Domain** | Email VO; no plaintext passwords. |
 | **NFR** | NFR-S01, NFR-S04, NFR-S05 |
-| **Faz** | F2 |
+| **Phase** | F2 |
 
-### UC-ID-02 — Giriş → JWT
+### UC-ID-02 — Login → JWT
 
-| Alan | Değer |
+| Field | Value |
 |------|-------|
-| **Aktör** | Customer / Organizer / Provider / Admin |
-| **Özet** | Kimlik doğrulama sonrası JWT access token. |
-| **Ana akış** | 1. Email/şifre doğrulanır. 2. Suspended kullanıcı reddedilir. 3. JWT (süre ≤ 60 dk) + role claims. |
+| **Actor** | Customer / Organizer / Provider / Admin |
+| **Summary** | A JWT access token is issued after authentication. |
+| **Main Flow** | 1. Email/password are verified. 2. A Suspended user is rejected. 3. JWT (lifetime ≤ 60 min) + role claims are issued. |
 | **Domain** | User status; Role claims. |
 | **NFR** | NFR-S01 |
-| **Faz** | F2 |
+| **Phase** | F2 |
 
-### UC-ID-03 — Rol ile endpoint erişimi (RBAC)
+### UC-ID-03 — Role-Based Endpoint Access (RBAC)
 
-| Alan | Değer |
+| Field | Value |
 |------|-------|
-| **Aktör** | Organizer, Customer, Admin |
-| **Özet** | Organizer event oluşturabilir; Customer başkasının siparişini göremez. |
-| **Ana akış** | 1. Protected endpoint JWT ister. 2. Policy/role kontrolü. 3. Yetkisiz → 403; başkasının kaynağı → 403. |
+| **Actor** | Organizer, Customer, Admin |
+| **Summary** | An Organizer can create an Event; a Customer cannot view another customer's order. |
+| **Main Flow** | 1. The protected endpoint requires a JWT. 2. Policy/role is checked. 3. Unauthorized → 403; another user's resource → 403. |
 | **Domain** | Identity claims → application DTO (ACL). |
 | **NFR** | NFR-S02 |
-| **Faz** | F2 |
+| **Phase** | F2 |
 
-### UC-ID-04 — Rate limit aşımı → 429
+### UC-ID-04 — Rate Limit Exceeded → 429
 
-| Alan | Değer |
+| Field | Value |
 |------|-------|
-| **Aktör** | Anonim / Customer |
-| **Özet** | Public endpoint 100 req/dk/IP; booking 10 req/dk/user aşıldığında 429. |
-| **Ana akış** | 1. Limit içinde istekler 2xx/4xx normal. 2. Limit aşımı → 429. |
+| **Actor** | Anonymous / Customer |
+| **Summary** | Returns 429 when the public endpoint limit of 100 req/min/IP or booking limit of 10 req/min/user is exceeded. |
+| **Main Flow** | 1. Within the limit, requests return normal 2xx/4xx responses. 2. Limit exceeded → 429. |
 | **Domain** | — (infrastructure middleware). |
 | **NFR** | NFR-S03 |
-| **Faz** | F2 |
+| **Phase** | F2 |
 
 ---
 
 ## Catalog
 
-### UC-CAT-01 — Organizer profil oluştur
+### UC-CAT-01 — Create Organizer Profile
 
-| Alan | Değer |
+| Field | Value |
 |------|-------|
-| **Aktör** | Organizer |
-| **Özet** | Kimliği olan kullanıcı OrganizerProfile oluşturur. |
-| **Ana akış** | 1. Authenticated User. 2. DisplayName (+ opsiyonel Bio). 3. `OrganizerProfile` aggregate persist. |
-| **Domain** | UserId Identity referansı (ID only). |
+| **Actor** | Organizer |
+| **Summary** | An identified user creates an OrganizerProfile. |
+| **Main Flow** | 1. Authenticated User. 2. DisplayName (+ optional Bio). 3. Persist the `OrganizerProfile` aggregate. |
+| **Domain** | UserId references Identity (ID only). |
 | **NFR** | NFR-M01, NFR-M02 |
-| **Faz** | F1 |
+| **Phase** | F1 |
 
-### UC-CAT-02 — Event oluştur (Draft) + TicketType ekle
+### UC-CAT-02 — Create Event (Draft) + Add TicketType
 
-| Alan | Değer |
+| Field | Value |
 |------|-------|
-| **Aktör** | Organizer |
-| **Özet** | Draft Event ve en az bir TicketType (fiyat, kota, satış penceresi). |
-| **Ana akış** | 1. Venue + başlık + StartAt/EndAt. 2. Status `Draft`. 3. TicketType ekle (Quota, Price, SalesStart/End). |
-| **Domain** | StartAt < EndAt; TicketType Event aggregate içinde. |
+| **Actor** | Organizer |
+| **Summary** | A Draft Event with at least one TicketType (price, quota, sales window). |
+| **Main Flow** | 1. Venue + title + StartAt/EndAt. 2. Status is `Draft`. 3. Add TicketType (Quota, Price, SalesStart/End). |
+| **Domain** | StartAt < EndAt; TicketType is within the Event aggregate. |
 | **NFR** | NFR-M02, NFR-S04 |
-| **Faz** | F1 |
+| **Phase** | F1 |
 
-### UC-CAT-03 — Event publish
+### UC-CAT-03 — Publish Event
 
-| Alan | Değer |
+| Field | Value |
 |------|-------|
-| **Aktör** | Organizer |
-| **Özet** | Draft Event'i yayınlar; satışa açar. |
-| **Ana akış** | 1. En az 1 aktif TicketType kontrolü. 2. Geçmiş tarih engeli. 3. Status `Published`; `EventPublished`. |
-| **Domain** | Sadece Draft düzenlenebilir; publish kuralları. |
+| **Actor** | Organizer |
+| **Summary** | Publishes a Draft Event and opens it for sale. |
+| **Main Flow** | 1. Verify at least 1 active TicketType. 2. Reject dates in the past. 3. Status becomes `Published`; `EventPublished`. |
+| **Domain** | Only Draft Events can be edited; publishing rules. |
 | **NFR** | NFR-M02 |
-| **Faz** | F1 |
+| **Phase** | F1 |
 
-### UC-CAT-04 — Event listele (pagination + cache)
+### UC-CAT-04 — List Events (Pagination + Cache)
 
-| Alan | Değer |
+| Field | Value |
 |------|-------|
-| **Aktör** | Customer / anonim (policy'ye göre) |
-| **Özet** | Publish Event listesi; sayfalama ve Redis cache. |
-| **Ana akış** | 1. page/pageSize ile sorgu. 2. Cache hit/miss. 3. p95 hedefi altında yanıt. |
-| **Domain** | Read model; Published filtre. |
+| **Actor** | Customer / anonymous (depending on policy) |
+| **Summary** | List of published Events with pagination and Redis cache. |
+| **Main Flow** | 1. Query using page/pageSize. 2. Cache hit/miss. 3. Respond below the p95 target. |
+| **Domain** | Read model; Published filter. |
 | **NFR** | NFR-P01, NFR-P02, NFR-P03 |
-| **Faz** | F3 |
+| **Phase** | F3 |
 
-### UC-CAT-05 — Event iptal
+### UC-CAT-05 — Cancel Event
 
-| Alan | Değer |
+| Field | Value |
 |------|-------|
-| **Aktör** | Organizer |
-| **Özet** | Event iptal edilir; ilgili pending rezervasyonlar iptal yoluna girer. |
-| **Ana akış** | 1. Event `Cancelled`; `EventCancelled`. 2. Booking pending Order/Reservation iptal/expire. 3. Bildirim outbox (opsiyonel). |
-| **Domain** | Cross-context event; kota/slot serbest bırakma. |
+| **Actor** | Organizer |
+| **Summary** | The Event is cancelled; related pending reservations enter the cancellation flow. |
+| **Main Flow** | 1. Event becomes `Cancelled`; `EventCancelled`. 2. Booking cancels/expires pending Orders/Reservations. 3. Notification outbox (optional). |
+| **Domain** | Cross-context event; quota/slot release. |
 | **NFR** | NFR-R04, NFR-O04 |
-| **Faz** | F4 |
+| **Phase** | F4 |
 
 ---
 
 ## Scheduling
 
-### UC-SCH-01 — Provider profil + haftalık müsaitlik
+### UC-SCH-01 — Provider Profile + Weekly Availability
 
-| Alan | Değer |
+| Field | Value |
 |------|-------|
-| **Aktör** | Provider |
-| **Özet** | Provider profili ve WeeklyAvailability tanımı. |
-| **Ana akış** | 1. DisplayName, Specialty, DefaultDurationMinutes. 2. Gün/saat aralıkları. 3. Status `Active`. |
+| **Actor** | Provider |
+| **Summary** | Defines a Provider profile and WeeklyAvailability. |
+| **Main Flow** | 1. DisplayName, Specialty, DefaultDurationMinutes. 2. Day/time ranges. 3. Status is `Active`. |
 | **Domain** | Provider aggregate; WeeklyAvailability entity. |
 | **NFR** | NFR-M02 |
-| **Faz** | F1 |
+| **Phase** | F1 |
 
-### UC-SCH-02 — Müsait slot listele
+### UC-SCH-02 — List Available Slots
 
-| Alan | Değer |
+| Field | Value |
 |------|-------|
-| **Aktör** | Customer |
-| **Özet** | Provider için Available TimeSlot listesi. |
-| **Ana akış** | 1. ProviderId + tarih aralığı. 2. Availability'den slot üret/oku. 3. Booked/Blocked hariç döner. |
+| **Actor** | Customer |
+| **Summary** | Lists Available TimeSlots for a Provider. |
+| **Main Flow** | 1. ProviderId + date range. 2. Generate/read slots from Availability. 3. Return all except Booked/Blocked slots. |
 | **Domain** | TimeSlot status. |
 | **NFR** | NFR-P01, NFR-P02 |
-| **Faz** | F3 |
+| **Phase** | F3 |
 
-### UC-SCH-03 — Appointment oluştur (overlap engeli)
+### UC-SCH-03 — Create Appointment (Overlap Prevention)
 
-| Alan | Değer |
+| Field | Value |
 |------|-------|
-| **Aktör** | Customer |
-| **Özet** | Seçilen slot için Appointment; aynı provider'da overlap yasak. |
-| **Ana akış** | 1. Slot Available mı kontrol. 2. Appointment Pending. 3. Overlap varsa reddet. |
-| **Domain** | Overlap kuralı; `AppointmentBooked`. |
+| **Actor** | Customer |
+| **Summary** | Creates an Appointment for the selected slot; overlap for the same Provider is prohibited. |
+| **Main Flow** | 1. Check whether the slot is Available. 2. Appointment is Pending. 3. Reject if an overlap exists. |
+| **Domain** | Overlap rule; `AppointmentBooked`. |
 | **NFR** | NFR-R01, NFR-M02 |
-| **Faz** | F1, F4 |
+| **Phase** | F1, F4 |
 
-### UC-SCH-04 — İptal / yeniden planlama
+### UC-SCH-04 — Cancellation / Rescheduling
 
-| Alan | Değer |
+| Field | Value |
 |------|-------|
-| **Aktör** | Customer / Provider |
-| **Özet** | 24 saat kuralı ile iptal; basit yeniden planlama. |
-| **Ana akış** | 1. İptal isteği → 24 saat policy. 2. Status `Cancelled`; slot serbest. 3. Yeniden planlama: eski iptal + yeni slot (basit). |
-| **Domain** | Cancel policy VO; `AppointmentCancelled`. |
+| **Actor** | Customer / Provider |
+| **Summary** | Cancellation subject to the 24-hour rule; simple rescheduling. |
+| **Main Flow** | 1. Cancellation request → 24-hour policy. 2. Status becomes `Cancelled`; slot is released. 3. Rescheduling: cancel the previous appointment + select a new slot (simple). |
+| **Domain** | Cancellation policy VO; `AppointmentCancelled`. |
 | **NFR** | NFR-M02, NFR-R01 |
-| **Faz** | F1 |
+| **Phase** | F1 |
 
 ---
 
 ## Booking + Payment + Notification
 
-CORE-01…05 omurga; aşağıdaki use case'ler tamamlayıcıdır.
+CORE-01…05 form the backbone; the following use cases are complementary.
 
-### UC-BOOK-06 — Pending rezervasyon expire (System)
+### UC-BOOK-06 — Expire Pending Reservation (System)
 
-| Alan | Değer |
+| Field | Value |
 |------|-------|
-| **Aktör** | System |
-| **Özet** | `ExpiresAt` geçmiş Pending Reservation/Order otomatik expire. |
-| **Ana akış** | 1. Background job adayları tarar. 2. Status `Expired`; `OrderExpired`. 3. Catalog/Scheduling release. |
-| **Domain** | Reservation ExpiresAt; event consumer'lar. |
+| **Actor** | System |
+| **Summary** | A Pending Reservation/Order whose `ExpiresAt` has passed expires automatically. |
+| **Main Flow** | 1. A background job scans candidates. 2. Status becomes `Expired`; `OrderExpired`. 3. Catalog/Scheduling releases the resource. |
+| **Domain** | Reservation ExpiresAt; event consumers. |
 | **NFR** | NFR-R03 |
-| **Faz** | F4 |
+| **Phase** | F4 |
 
-### UC-PAY-01 — Fake gateway senaryoları
+### UC-PAY-01 — Fake Gateway Scenarios
 
-| Alan | Değer |
+| Field | Value |
 |------|-------|
-| **Aktör** | Customer (Payment üzerinden) |
-| **Özet** | `IPaymentGateway` fake adapter: success / fail / timeout. |
-| **Ana akış** | 1. Charge çağrısı. 2. Konfigüre senaryoya göre Completed / Failed / timeout. 3. Booking event ile tepki verir (CORE-01 veya CORE-05). |
+| **Actor** | Customer (via Payment) |
+| **Summary** | `IPaymentGateway` fake adapter: success / failure / timeout. |
+| **Main Flow** | 1. Charge call. 2. Completed / Failed / timeout based on the configured scenario. 3. Booking reacts through an event (CORE-01 or CORE-05). |
 | **Domain** | ACL: port/adapter; `PaymentCompleted` / `PaymentFailed`. |
-| **NFR** | NFR-R05, NFR-SC03 (ileride) |
-| **Faz** | F4 |
+| **NFR** | NFR-R05, NFR-SC03 (future) |
+| **Phase** | F4 |
 
-### UC-NOTIF-01 — Outbox gönderim ve retry
+### UC-NOTIF-01 — Outbox Delivery and Retry
 
-| Alan | Değer |
+| Field | Value |
 |------|-------|
-| **Aktör** | System |
-| **Özet** | OutboxMessage Pending → Processing → Sent; fail'de retry. |
-| **Ana akış** | 1. Domain event ile outbox satırı. 2. Worker işler → LoggingNotificationSender. 3. Fail → RetryCount++, NextRetryAt. |
+| **Actor** | System |
+| **Summary** | OutboxMessage Pending → Processing → Sent; retry on failure. |
+| **Main Flow** | 1. A domain event creates an outbox row. 2. Worker processes it → LoggingNotificationSender. 3. Failure → RetryCount++, NextRetryAt. |
 | **Domain** | OutboxMessage aggregate; NotificationLog. |
 | **NFR** | NFR-R04 |
-| **Faz** | F4 |
+| **Phase** | F4 |
 
 ---
 
 ## Admin
 
-### UC-ADM-01 — Etkinlik / randevu listele
+### UC-ADM-01 — List Events / Appointments
 
-| Alan | Değer |
+| Field | Value |
 |------|-------|
-| **Aktör** | Admin |
-| **Özet** | Admin paneli için Event ve Appointment listeleri. |
-| **Ana akış** | 1. JWT + Admin rolü. 2. Filtreli/paginated liste. |
-| **Domain** | Cross-context read (ID + DTO); yazma yok. |
+| **Actor** | Admin |
+| **Summary** | Event and Appointment lists for the Admin panel. |
+| **Main Flow** | 1. JWT + Admin role. 2. Filtered/paginated list. |
+| **Domain** | Cross-context read (ID + DTO); no writes. |
 | **NFR** | NFR-S02, NFR-P02 |
-| **Faz** | F2, F3 |
+| **Phase** | F2, F3 |
 
-### UC-ADM-02 — Satış adedi + doluluk oranı
+### UC-ADM-02 — Sales Count + Occupancy Rate
 
-| Alan | Değer |
+| Field | Value |
 |------|-------|
-| **Aktör** | Admin |
-| **Özet** | Basit rapor: satış adedi, doluluk. |
-| **Ana akış** | 1. Event/TicketType veya Provider için aggregate query. 2. SoldCount/Quota veya booked/available oranı. |
-| **Domain** | Read-only projection; karmaşık BI yok. |
-| **NFR** | NFR-P01, NFR-A02 (sağlık yanında okuma yolu) |
-| **Faz** | F3, F7 |
+| **Actor** | Admin |
+| **Summary** | Simple report: sales count and occupancy. |
+| **Main Flow** | 1. Aggregate query for an Event/TicketType or Provider. 2. SoldCount/Quota or booked/available ratio. |
+| **Domain** | Read-only projection; no complex BI. |
+| **NFR** | NFR-P01, NFR-A02 (read path alongside health checks) |
+| **Phase** | F3, F7 |
 
 ---
 
-## Uygulama sırası (aşamalar)
+## Implementation Order (Stages)
 
-Sıra bağımlılığa göre sabitlenmiştir: önce domain iskeleti ve tek dikey dilim (event bileti), sonra güvenlik, performans, güvenilirlik, gözlemlenebilirlik.
+The order is fixed by dependency: first the domain skeleton and a single vertical slice (event ticket), followed by security, performance, reliability, and observability.
 
 ```mermaid
 flowchart LR
-  F0[F0_Iskelet] --> F1a[F1a_Identity_Catalog]
+  F0[F0_Skeleton] --> F1a[F1a_Identity_Catalog]
   F1a --> F1b[F1b_Scheduling]
   F1b --> F1c[F1c_CORE01_thin]
   F1c --> F2[F2_Security]
@@ -358,179 +358,179 @@ flowchart LR
   F6 --> F7[F7_Availability]
 ```
 
-### F0 — Solution iskeleti (use case yok)
+### F0 — Solution Skeleton (No Use Cases)
 
-| Sıra | İş | Çıktı / kanıt |
+| Order | Task | Output / Evidence |
 |------|-----|----------------|
-| 0.1 | 4 katman + `Shared` (Entity, AggregateRoot, VO, IDomainEvent) | Derlenen solution |
-| 0.2 | EF Core + PostgreSQL DbContext (boş/minimal) | Migration çalışır |
-| 0.3 | NetArchTest katman kuralları | NFR-M01 |
+| 0.1 | 4 layers + `Shared` (Entity, AggregateRoot, VO, IDomainEvent) | Compiling solution |
+| 0.2 | EF Core + PostgreSQL DbContext (empty/minimal) | Migration runs |
+| 0.3 | NetArchTest layer rules | NFR-M01 |
 
-**Bitiş kapısı:** Architecture test yeşil; Infrastructure → Domain bağımlılığı yok.
-
----
-
-### F1a — Identity + Catalog (yazma yolu)
-
-| Sıra | Use case | Not |
-|------|----------|-----|
-| 1 | **UC-ID-01** Kayıt | JWT zorunlu değil; User aggregate + hash |
-| 2 | **UC-ID-02** Giriş (basit token veya dev stub) | Tam JWT sertleştirme F2'de |
-| 3 | **UC-CAT-01** Organizer profil | UserId referansı |
-| 4 | **UC-CAT-02** Event Draft + TicketType | Venue dahil |
-| 5 | **UC-CAT-03** Publish | Domain kuralları + unit test |
-
-**Bitiş kapısı:** Organizer publish edilmiş Event üretebiliyor; NFR-M02 domain testleri.
+**Completion gate:** Architecture test passes; no Infrastructure → Domain dependency.
 
 ---
 
-### F1b — Scheduling (yazma yolu)
+### F1a — Identity + Catalog (Write Path)
 
-| Sıra | Use case | Not |
+| Order | Use Case | Note |
 |------|----------|-----|
-| 6 | **UC-SCH-01** Provider + haftalık müsaitlik | |
-| 7 | **UC-SCH-03** Appointment oluştur (overlap) | Domain + unit; API ince |
-| 8 | **UC-SCH-04** İptal / yeniden planlama | 24 saat policy |
+| 1 | **UC-ID-01** Registration | JWT not required; User aggregate + hash |
+| 2 | **UC-ID-02** Login (simple token or dev stub) | Full JWT hardening in F2 |
+| 3 | **UC-CAT-01** Organizer profile | UserId reference |
+| 4 | **UC-CAT-02** Event Draft + TicketType | Includes Venue |
+| 5 | **UC-CAT-03** Publish | Domain rules + unit test |
 
-**Bitiş kapısı:** Overlap reddi unit test ile kanıtlı.
+**Completion gate:** An Organizer can produce a published Event; NFR-M02 domain tests.
 
 ---
 
-### F1c — İlk dikey dilim (UC-CORE-01 ince)
+### F1b — Scheduling (Write Path)
 
-Happy path senkron ve sade: outbox/concurrency yok; fake payment yalnız **success**.
-
-| Sıra | Use case | Not |
+| Order | Use Case | Note |
 |------|----------|-----|
-| 9 | Order + Reservation oluştur (CORE-01 adım 1–3) | Kota hold/SoldCount |
-| 10 | **UC-PAY-01** yalnızca success | Port + FakePaymentGateway |
-| 11 | Confirm + Ticket issue (CORE-01 adım 5) | `TicketIssued` domain event (in-process) |
-| 12 | **UC-CORE-02** ince dilim | SCH-03 + aynı Order/Payment yolu |
+| 6 | **UC-SCH-01** Provider + weekly availability | |
+| 7 | **UC-SCH-03** Create Appointment (overlap) | Domain + unit; thin API |
+| 8 | **UC-SCH-04** Cancellation / rescheduling | 24-hour policy |
 
-**Bitiş kapısı:** Event bileti ve randevu uçtan uca (success only) çalışır; F1 kapanır.
+**Completion gate:** Overlap rejection is proven by a unit test.
+
+---
+
+### F1c — First Vertical Slice (Thin UC-CORE-01)
+
+The happy path is synchronous and simple: no outbox/concurrency; fake payment supports **success** only.
+
+| Order | Use Case | Note |
+|------|----------|-----|
+| 9 | Create Order + Reservation (CORE-01 steps 1–3) | Quota hold/SoldCount |
+| 10 | **UC-PAY-01** success only | Port + FakePaymentGateway |
+| 11 | Confirm + issue Ticket (CORE-01 step 5) | `TicketIssued` domain event (in-process) |
+| 12 | **UC-CORE-02** thin slice | SCH-03 + same Order/Payment path |
+
+**Completion gate:** Event ticket and appointment flows work end-to-end (success only); F1 is complete.
 
 ---
 
 ### F2 — Security
 
-Mevcut endpoint'ler üzerine kilit; yeni iş kuralı yok.
+Lock down existing endpoints; no new business rules.
 
-| Sıra | Use case | Not |
+| Order | Use Case | Note |
 |------|----------|-----|
-| 13 | **UC-ID-02** JWT Bearer (≤ 60 dk) | NFR-S01 |
-| 14 | **UC-ID-03** RBAC | Organizer create; Customer isolation |
-| 15 | FluentValidation tüm public command'larda | NFR-S04 |
+| 13 | **UC-ID-02** JWT Bearer (≤ 60 min) | NFR-S01 |
+| 14 | **UC-ID-03** RBAC | Organizer creation; Customer isolation |
+| 15 | FluentValidation on all public commands | NFR-S04 |
 | 16 | **UC-ID-04** Rate limit | public + booking |
-| 17 | **UC-ADM-01** liste (RBAC ile) | Admin only |
+| 17 | **UC-ADM-01** listing (with RBAC) | Admin only |
 
-**Bitiş kapısı:** 401 / 403 / 429 integration testleri yeşil.
+**Completion gate:** 401 / 403 / 429 integration tests pass.
 
 ---
 
-### F3 — Performance (okuma yolları)
+### F3 — Performance (Read Paths)
 
-| Sıra | Use case | Not |
+| Order | Use Case | Note |
 |------|----------|-----|
-| 18 | **UC-CAT-04** Event listele | pagination + Redis + index |
-| 19 | **UC-SCH-02** Müsait slot listele | p95 ölçümü |
-| 20 | **UC-ADM-02** doluluk raporu | basit aggregate query |
+| 18 | **UC-CAT-04** List Events | pagination + Redis + index |
+| 19 | **UC-SCH-02** List available slots | p95 measurement |
+| 20 | **UC-ADM-02** occupancy report | simple aggregate query |
 
-**Bitiş kapısı:** Liste endpoint'lerinde p95 < 300 ms kanıtı (NFR-P01/P02/P03).
+**Completion gate:** Evidence of p95 < 300 ms for listing endpoints (NFR-P01/P02/P03).
 
 ---
 
-### F4 — Reliability (omurga sertleştirme)
+### F4 — Reliability (Core Hardening)
 
-| Sıra | Use case | Not |
+| Order | Use Case | Note |
 |------|----------|-----|
 | 21 | **UC-CORE-04** Idempotency | Order + Payment key |
-| 22 | **UC-CORE-03** Çift satış / overlap yarışı | concurrency test |
+| 22 | **UC-CORE-03** Double-selling / overlap race | concurrency test |
 | 23 | **UC-PAY-01** fail + timeout | |
-| 24 | **UC-CORE-05** expire + kota/slot release | event zinciri |
-| 25 | **UC-BOOK-06** System expire job | |
+| 24 | **UC-CORE-05** expiration + quota/slot release | event chain |
+| 25 | **UC-BOOK-06** System expiration job | |
 | 26 | **UC-NOTIF-01** Outbox + retry | LoggingNotificationSender |
-| 27 | **UC-CAT-05** Event iptal → pending iptal | |
+| 27 | **UC-CAT-05** Event cancellation → pending cancellation | |
 
-**Bitiş kapısı:** NFR-R01…R05 test kanıtı; zero double-booking.
+**Completion gate:** Test evidence for NFR-R01…R05; zero double-booking.
 
 ---
 
 ### F5 — Observability
 
-Yeni use case yok; **UC-CORE-01** üzerinden enstrümantasyon.
+No new use cases; instrumentation through **UC-CORE-01**.
 
-| Sıra | İş | Kanıt |
+| Order | Task | Evidence |
 |------|-----|-------|
 | 28 | Structured logging + correlation | NFR-O01 |
-| 29 | OTel trace (Booking → Payment → Outbox span'leri) | NFR-O02 |
+| 29 | OTel trace (Booking → Payment → Outbox spans) | NFR-O02 |
 | 30 | Latency / error / throughput metrics | NFR-O03 |
 
-**Bitiş kapısı:** Grafana/Prometheus'ta booking flow dashboard.
+**Completion gate:** Booking flow dashboard in Grafana/Prometheus.
 
 ---
 
 ### F6 — Scalability
 
-| Sıra | İş | Kanıt |
+| Order | Task | Evidence |
 |------|-----|-------|
 | 31 | k6: **UC-CORE-01** happy path | NFR-SC02 |
-| 32 | k6: **UC-CORE-03** yarış senaryosu | NFR-R01 under load |
+| 32 | k6: **UC-CORE-03** race scenario | NFR-R01 under load |
 | 33 | Horizontal scale + circuit breaker (fake gateway) | NFR-SC01/SC03 |
 
-**Bitiş kapısı:** Load test raporu `docs/` veya `artifacts/` altında.
+**Completion gate:** Load test report under `docs/` or `artifacts/`.
 
 ---
 
 ### F7 — Availability
 
-| Sıra | İş | Kanıt |
+| Order | Task | Evidence |
 |------|-----|-------|
 | 34 | Health checks (db, redis, self) | NFR-A02 |
 | 35 | Backup / restore drill + runbook | NFR-A03 |
-| 36 | UC-ADM okuma health ile smoke | NFR-A01 hedefi |
+| 36 | Smoke-test UC-ADM reads with health checks | NFR-A01 target |
 
-**Bitiş kapısı:** Runbook + restore kanıtı; [PROJECT.md başarı kriterleri](PROJECT.md#başarı-kriterleri).
+**Completion gate:** Runbook + restore evidence; [PROJECT.md success criteria](PROJECT.md#success-criteria).
 
 ---
 
-## Faz özeti (tek bakış)
+## Phase Summary (At a Glance)
 
-| Faz | Odak | Use case sırası | Kanıt |
+| Phase | Focus | Use Case Order | Evidence |
 |-----|------|-----------------|-------|
-| F0 | İskelet | — | NetArchTest |
+| F0 | Skeleton | — | NetArchTest |
 | F1a | Identity + Catalog | ID-01 → ID-02 → CAT-01 → CAT-02 → CAT-03 | Domain unit |
 | F1b | Scheduling | SCH-01 → SCH-03 → SCH-04 | Overlap unit |
-| F1c | Dikey dilim | CORE-01 thin → PAY success → CORE-02 thin | E2E success |
+| F1c | Vertical slice | CORE-01 thin → PAY success → CORE-02 thin | E2E success |
 | F2 | Security | ID-02 JWT → ID-03 → validation → ID-04 → ADM-01 | 401/403/429 |
 | F3 | Performance | CAT-04 → SCH-02 → ADM-02 | p95 / cache |
 | F4 | Reliability | CORE-04 → CORE-03 → PAY fail → CORE-05 → BOOK-06 → NOTIF-01 → CAT-05 | R01–R05 |
-| F5 | Observability | CORE-01 enstrümantasyon | OTel dashboard |
-| F6 | Scale | CORE-01/03 k6 | Load raporu |
+| F5 | Observability | CORE-01 instrumentation | OTel dashboard |
+| F6 | Scale | CORE-01/03 k6 | Load report |
 | F7 | Availability | health + backup | Runbook |
 
 ---
 
-## Bilinçli olarak use case yapılmayacaklar
+## Deliberately Excluded Use Cases
 
-Aşağıdakiler Phase 1 MVP dışı; laboratuvarı feature bloat'a çeker ve NFR kanıtı üretmezler:
+The following are outside the Phase 1 MVP; they would introduce feature bloat into the laboratory without producing NFR evidence:
 
-- Koltuk haritası (seat map)
-- Gerçek PSP (Stripe, Iyzico vb.)
-- Karmaşık fiyatlandırma / kampanya motoru
+- Seat map
+- Real PSP (Stripe, Iyzico, etc.)
+- Complex pricing / promotion engine
 - Multi-tenant (SaaS)
-- Bekleme listesi (waitlist)
-- Mobil uygulama
-- Çoklu para birimi
-- Gerçek SMS/e-posta sağlayıcısı
-- WebSocket ile canlı kuyruk ekranı
+- Waitlist
+- Mobile application
+- Multiple currencies
+- Real SMS/email provider
+- Live queue display via WebSocket
 
-Detay: [PROJECT.md — MVP Dışı](PROJECT.md#mvp-dışı-phase-1de-yapma).
+Details: [PROJECT.md — Outside the MVP](PROJECT.md#out-of-mvp-scope-do-not-implement-in-phase-1).
 
 ---
 
-## Application handler eşlemesi (hedef isimler)
+## Application Handler Mapping (Target Names)
 
-| Use case ID | Handler / klasör (örnek) |
+| Use Case ID | Handler / Folder (Example) |
 |-------------|--------------------------|
 | UC-ID-01 | `Users.RegisterUser` |
 | UC-ID-02 | `Users.LoginUser` |
@@ -544,8 +544,8 @@ Detay: [PROJECT.md — MVP Dışı](PROJECT.md#mvp-dışı-phase-1de-yapma).
 | UC-SCH-03 | `Scheduling.BookAppointment` |
 | UC-SCH-04 | `Scheduling.CancelAppointment`, `Scheduling.RescheduleAppointment` |
 | UC-CORE-01 | `Bookings.CreateOrder`, `Payments.ProcessPayment`, `Bookings.ConfirmOrder` |
-| UC-CORE-02 | `Scheduling.BookAppointment` + booking/payment zinciri |
-| UC-CORE-04 | aynı CreateOrder/ProcessPayment (idempotency) |
+| UC-CORE-02 | `Scheduling.BookAppointment` + booking/payment chain |
+| UC-CORE-04 | same CreateOrder/ProcessPayment (idempotency) |
 | UC-BOOK-06 | `Bookings.ExpireReservations` (hosted service) |
 | UC-NOTIF-01 | `Notifications.ProcessOutbox` |
 | UC-ADM-01 | `Admin.ListEvents`, `Admin.ListAppointments` |

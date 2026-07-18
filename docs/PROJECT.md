@@ -1,102 +1,102 @@
-# ReserveFlow — Proje Tanımı
+# ReserveFlow — Project Definition
 
-## Amaç
+## Purpose
 
-ReserveFlow, **online etkinlik biletleme** ve **randevu** işlevlerini bir arada sunan bir platformdur.
+ReserveFlow is a platform that combines **online event ticketing** and **appointment scheduling** capabilities.
 
-Asıl hedef feature sayısını büyütmek değil; aşağıdaki iki alanda pratik yapmaktır:
+The primary goal is not to increase the number of features, but to gain practical experience in the following two areas:
 
-1. **Domain-Driven Design (DDD)** — bounded context, aggregate, domain event, anti-corruption layer
-2. **Non-Functional Requirements (NFR)** — ölçülebilir hedefler ve test kanıtı
+1. **Domain-Driven Design (DDD)** — bounded context, aggregate root, domain event, anti-corruption layer
+2. **Non-Functional Requirements (NFRs)** — measurable targets and verification evidence
 
-Bu proje bir ürün MVP'si kadar, bir **mimari laboratuvar** kadar önemlidir.
+This project is as much an **architecture laboratory** as it is a product MVP.
 
-Use case kataloğu (aktörler, dikey dilimler, NFR/faz eşlemesi): [`docs/USE_CASES.md`](USE_CASES.md).
+Use case catalog (actors, vertical slices, NFR/phase mapping): [`docs/USE_CASES.md`](USE_CASES.md).
 
-## Teknoloji
+## Technology
 
 - **Runtime:** .NET (ASP.NET Core)
-- **Veritabanı:** PostgreSQL
-- **Cache:** Redis (Faz 3+)
-- **Mesajlaşma:** Outbox + message broker (RabbitMQ veya in-process queue ile başla)
-- **Gözlemlenebilirlik:** OpenTelemetry + Prometheus + Grafana (Faz 5+)
-- **Load test:** k6 (Faz 6+)
+- **Database:** PostgreSQL
+- **Cache:** Redis (Phase 3+)
+- **Messaging:** Outbox + message broker (start with RabbitMQ or an in-process queue)
+- **Observability:** OpenTelemetry + Prometheus + Grafana (Phase 5+)
+- **Load testing:** k6 (Phase 6+)
 
-## İş Modeli
+## Business Model
 
-Platform iki rezervasyon tipini destekler:
+The platform supports two reservation types:
 
-| Tip | Örnek | Temel kural |
-|-----|-------|-------------|
-| **Event** | Konser, workshop, konferans | Kontenjan bazlı bilet satışı, çift satış engeli |
-| **Appointment** | Danışman, doktor, kuaför | Slot bazlı rezervasyon, overlap engeli |
+| Type | Example | Core rule |
+|------|---------|-----------|
+| **Event** | Concert, workshop, conference | Capacity-based ticket sales with prevention of double-selling |
+| **Appointment** | Consultant, physician, hairdresser | Time-slot-based reservations with overlap prevention |
 
-## Bounded Context'ler
+## Bounded Contexts
 
 ```text
-Identity      → Kullanıcı, rol, kimlik doğrulama
-Catalog       → Etkinlik, venue, bilet tipi
-Scheduling    → Provider, müsaitlik, randevu
-Booking       → Rezervasyon, sipariş, bilet
-Payment       → Tahsilat, iade (simülasyon)
-Notification  → E-posta/SMS mock, outbox
+Identity      → User, role, authentication
+Catalog       → Event, venue, ticket type
+Scheduling    → Provider, availability, appointment
+Booking       → Reservation, order, ticket
+Payment       → Payment collection, refund (simulation)
+Notification  → Email/SMS mock, outbox
 ```
 
-Context'ler arası doğrudan entity paylaşımı yoktur. İletişim **ID referansı**, **DTO** ve **domain event** ile yapılır.
+Entities are not shared directly across bounded contexts. Communication uses **ID references**, **DTOs**, and **domain events**.
 
-## MVP Kapsamı (Dahil)
+## MVP Scope (Included)
 
 ### Identity
-- Kayıt / giriş (JWT)
-- Roller: `Customer`, `Organizer`, `Provider`, `Admin`
-- RBAC ile endpoint koruması
+- Registration / sign-in (JWT)
+- Roles: `Customer`, `Organizer`, `Provider`, `Admin`
+- Endpoint protection with RBAC
 
-### Catalog (Etkinlik)
-- Organizer profili
-- Venue (ad, kapasite, adres)
-- Etkinlik oluşturma ve listeleme
-- Bilet tipi (Early Bird, VIP vb.) + kontenjan + satış penceresi
+### Catalog (Event)
+- Organizer profile
+- Venue (name, capacity, address)
+- Event creation and listing
+- Ticket type (Early Bird, VIP, etc.) + capacity + sales window
 
-### Scheduling (Randevu)
-- Provider profili (uzmanlık, varsayılan süre)
-- Haftalık müsaitlik tanımı
-- Slot rezervasyonu (overlap engeli)
-- İptal / yeniden planlama (basit kural: 24 saat öncesine kadar)
+### Scheduling (Appointment)
+- Provider profile (specialty, default duration)
+- Weekly availability definition
+- Time-slot reservation (overlap prevention)
+- Cancellation / rescheduling (simple rule: permitted up to 24 hours in advance)
 
 ### Booking
-- Rezervasyon oluşturma (type: `Event` | `Appointment`)
-- Sipariş akışı: `PENDING` → `CONFIRMED` → `CANCELLED` | `EXPIRED`
-- Idempotency key (aynı isteğin iki kez işlenmemesi)
-- Bilet kodu / QR üretimi (event sonrası)
+- Reservation creation (type: `Event` | `Appointment`)
+- Order flow: `PENDING` → `CONFIRMED` → `CANCELLED` | `EXPIRED`
+- Idempotency key (prevents the same request from being processed twice)
+- Ticket code / QR generation (after the event)
 
 ### Payment
 - `PaymentGateway` port + fake adapter
-- Başarılı / başarısız / timeout senaryoları
-- Gerçek PSP entegrasyonu yok
+- Success / failure / timeout scenarios
+- No real PSP integration
 
 ### Notification
-- E-posta mock (log veya dosyaya yaz)
-- Outbox pattern ile async gönderim
+- Email mock (write to a log or file)
+- Asynchronous delivery using the Outbox pattern
 
 ### Admin
-- Etkinlik ve randevu listeleme
-- Basit rapor: satış adedi, doluluk oranı
+- Event and appointment listing
+- Basic report: number of sales, occupancy rate
 
-## MVP Dışı (Phase 1'de Yapma)
+## Out of MVP Scope (Do Not Implement in Phase 1)
 
-- Koltuk haritası (seat map)
-- Gerçek ödeme (Stripe, Iyzico vb.)
-- Karmaşık fiyatlandırma ve kampanya motoru
-- Multi-tenant (SaaS)
-- Bekleme listesi (waitlist)
-- Mobil uygulama
-- Çoklu para birimi
-- Gerçek SMS/e-posta entegrasyonu
-- WebSocket ile canlı kuyruk ekranı
+- Seat map
+- Real payment processing (Stripe, Iyzico, etc.)
+- Complex pricing and promotion engine
+- Multi-tenancy (SaaS)
+- Waitlist
+- Mobile application
+- Multiple currencies
+- Real SMS/email integration
+- Live queue display using WebSocket
 
-## Solution Yapısı (Hedef)
+## Solution Structure (Target)
 
-Clean Architecture — 4 katmanlı proje, feature bazlı alt klasörler. Detay: `docs/STRUCTURE.md`
+Clean Architecture — a four-layer solution with feature-based subdirectories. Details: `docs/STRUCTURE.md`
 
 ```text
 ReserveFlow.sln
@@ -119,43 +119,43 @@ docs/
 
 ## Ubiquitous Language
 
-| Terim | Anlam |
-|-------|-------|
-| **Event** | Belirli tarih/saatte gerçekleşen toplu etkinlik |
-| **TicketType** | Bir etkinliğe ait fiyat + kontenjan tanımı |
-| **Ticket** | Onaylanmış sipariş sonrası üretilen bilet kaydı |
-| **Provider** | Randevu veren hizmet sağlayıcı |
-| **TimeSlot** | Rezerve edilebilir zaman dilimi |
-| **Appointment** | Provider + müşteri + slot bağlantısı |
-| **Reservation** | Event veya Appointment için genel rezervasyon kaydı |
-| **Order** | Ödeme ve onay yaşam döngüsünü yöneten sipariş |
-| **OutboxMessage** | Güvenilir async bildirim için kuyruklanan domain event |
+| Term | Meaning |
+|------|---------|
+| **Event** | A group event held at a specific date and time |
+| **TicketType** | The price + capacity definition for an event |
+| **Ticket** | A ticket record generated after an order is confirmed |
+| **Provider** | A service provider who offers appointments |
+| **TimeSlot** | A reservable period of time |
+| **Appointment** | The association between a Provider, customer, and time slot |
+| **Reservation** | A general reservation record for an Event or Appointment |
+| **Order** | An order that manages the payment and confirmation lifecycle |
+| **OutboxMessage** | A domain event queued for reliable asynchronous notification |
 
 ## Scope Guardrails
 
-1. Yeni feature ancak bir NFR'yi test edecekse eklenir.
-2. Her bounded context'te en fazla 2 aggregate root.
-3. Her sprint sonunda ölçüm kanıtı (grafik, log veya test raporu) zorunludur.
+1. A new feature is added only if it verifies an NFR.
+2. Each bounded context has no more than two aggregate roots.
+3. Measurement evidence (a chart, log, or test report) is required at the end of every sprint.
 
-## Faz Planı
+## Phase Plan
 
-| Faz | Odak | Çıktı |
-|-----|------|-------|
-| F1 | DDD iskelet + CRUD | Solution yapısı, domain model, unit test |
-| F2 | Security NFR | JWT, RBAC, rate limit, validation |
-| F3 | Performance NFR | Redis cache, DB index, pagination |
+| Phase | Focus | Deliverable |
+|-------|-------|-------------|
+| F1 | DDD foundation + CRUD | Solution structure, domain model, unit tests |
+| F2 | Security NFR | JWT, RBAC, rate limiting, validation |
+| F3 | Performance NFR | Redis cache, database index, pagination |
 | F4 | Reliability NFR | Outbox, retry, idempotency |
 | F5 | Observability NFR | Tracing, metrics, dashboard |
-| F6 | Scalability NFR | k6 load test, horizontal scale |
+| F6 | Scalability NFR | k6 load test, horizontal scaling |
 | F7 | Availability NFR | Health check, backup/restore drill |
 
-## Başarı Kriterleri
+## Success Criteria
 
-Proje tamamlandığında elde olunması gerekenler:
+The following should be available when the project is complete:
 
-- [ ] Bounded context haritası ve domain model diyagramı
-- [ ] NFR matrisi (hedef → tasarım → test kanıtı)
-- [ ] Load test raporu (en az 1 kritik endpoint)
+- [ ] Bounded context map and domain model diagram
+- [ ] NFR matrix (target → design → verification evidence)
+- [ ] Load test report (for at least one critical endpoint)
 - [ ] Observability dashboard (latency, error rate, throughput)
-- [ ] Runbook (deploy, rollback, backup restore)
-- [ ] En az 5 ADR (Architecture Decision Record)
+- [ ] Runbook (deployment, rollback, backup restoration)
+- [ ] At least five ADRs (Architecture Decision Records)

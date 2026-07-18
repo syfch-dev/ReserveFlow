@@ -1,8 +1,12 @@
 # ReserveFlow
 
-ReserveFlow is a .NET platform for event ticketing and appointment booking. The project is designed as an architecture laboratory for practicing Domain-Driven Design, Clean Architecture, and measurable non-functional requirements.
+ReserveFlow is a .NET platform for event ticketing and appointment booking. It is developed with three complementary objectives:
 
-The focus is not feature volume. Each capability should exercise a domain boundary or provide evidence for an NFR such as reliability, performance, security, or observability.
+1. To provide a controlled architecture laboratory for applying Domain-Driven Design, Clean Architecture, and measurable non-functional requirements.
+2. To serve as a practical reference implementation for teams and developers building maintainable .NET applications with Clean Architecture.
+3. To provide a realistic environment for designing, implementing, and validating CI/CD practices across the software delivery lifecycle.
+
+The project prioritizes architectural clarity, explicit boundaries, repeatable delivery processes, and verifiable engineering outcomes over feature volume. Each capability is expected to exercise a domain boundary, provide measurable evidence for an NFR, or strengthen the automated delivery pipeline.
 
 ## Current status
 
@@ -17,7 +21,7 @@ Implemented:
 - Custom registration span and metric
 - Architecture and booking tests
 
-The remaining ticketing, scheduling, payment, outbox, authentication, and authorization flows are planned incrementally. See [the project plan](docs/PROJECT.md) and [use-case catalog](docs/USE_CASES.md).
+The remaining ticketing, scheduling, payment, outbox, authentication, and authorization flows are planned incrementally. CI/CD automation will also be introduced progressively to validate build, test, containerization, security scanning, deployment, and rollback practices. See [the project plan](docs/PROJECT.md) and [use-case catalog](docs/USE_CASES.md).
 
 ## Architecture
 
@@ -58,6 +62,7 @@ Key rules:
 - Grafana for dashboards
 - xUnit and NetArchTest
 - Docker Compose
+- CI/CD automation (planned)
 
 ## Getting started
 
@@ -154,6 +159,22 @@ Build the solution:
 ```bash
 dotnet build ReserveFlow.sln
 ```
+
+These commands are intended to become mandatory quality gates in the CI pipeline.
+
+## CI/CD roadmap
+
+ReserveFlow also serves as a practical environment for exercising modern software delivery processes. Planned pipeline stages include:
+
+- Restore, build, and automated test execution
+- Architecture-rule enforcement
+- Code quality, dependency, and security checks
+- Reproducible container image builds
+- Database migration validation
+- Environment-based deployment workflows
+- Health verification, rollback, and delivery evidence
+
+CI/CD capabilities will be added incrementally and documented with the same measurable-evidence approach used for other non-functional requirements.
 
 ## Documentation
 
