@@ -207,20 +207,20 @@ Durum: `Planned` | `InProgress` | `Verified` | `Failed`
 | Alan | Değer |
 |------|-------|
 | **Gereksinim** | Request → DB → outbox → notification trace edilebilir |
-| **Tasarım** | OpenTelemetry + Jaeger veya Grafana Tempo |
-| **Doğrulama** | Booking flow trace'de ≥ 4 span görünür |
+| **Tasarım** | OpenTelemetry (OTLP) → Jaeger. ASP.NET Core + HttpClient + Npgsql auto-instrumentation; Application katmanı custom `ActivitySource` (`ReserveFlow.Application`) |
+| **Doğrulama** | Jaeger UI'da `ReserveFlow.Api` servisi ve request span'leri görünüyor; booking akışı geldiğinde ≥ 4 span hedefi |
 | **Trade-off** | Overhead ~%1-3 latency |
-| **Durum** | Planned |
+| **Durum** | InProgress |
 
 ### NFR-O03: Metrics & alerting
 
 | Alan | Değer |
 |------|-------|
 | **Gereksinim** | request_count, error_rate, latency_histogram metrikleri |
-| **Tasarım** | Prometheus + Grafana dashboard |
-| **Doğrulama** | Dashboard'da real-time metrik; error rate > %5 alert |
+| **Tasarım** | OpenTelemetry metrics (OTLP) → Prometheus OTLP receiver → Grafana dashboard; custom metric `reserveflow.users.registered` |
+| **Doğrulama** | Prometheus'ta `http_server_request_duration_seconds_*` serileri; Grafana "ReserveFlow — Overview" dashboard'unda request rate / error rate / p95 panelleri |
 | **Trade-off** | Alert fatigue riski → threshold dikkatli ayarlanır |
-| **Durum** | Planned |
+| **Durum** | InProgress |
 
 ### NFR-O04: Audit trail
 
@@ -323,8 +323,8 @@ Durum: `Planned` | `InProgress` | `Verified` | `Failed`
 | NFR-R04 | Reliability | Outbox | F4 | Planned |
 | NFR-R05 | Reliability | Payment timeout | F4 | Planned |
 | NFR-O01 | Observability | Structured logs | F5 | Planned |
-| NFR-O02 | Observability | Tracing | F5 | Planned |
-| NFR-O03 | Observability | Metrics | F5 | Planned |
+| NFR-O02 | Observability | Tracing | F5 | InProgress |
+| NFR-O03 | Observability | Metrics | F5 | InProgress |
 | NFR-O04 | Observability | Audit trail | F5 | Planned |
 | NFR-SC01 | Scalability | Horizontal scale | F6 | Planned |
 | NFR-SC02 | Scalability | 200 RPS | F6 | Planned |

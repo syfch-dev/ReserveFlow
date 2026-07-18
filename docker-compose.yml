@@ -15,6 +15,66 @@ services:
       interval: 5s
       timeout: 5s
       retries: 5
+    networks:
+      - reserveflow
+
+  # Distributed tracing backend + UI. The OTLP receiver listens on ports 4317/4318.
+  # UI: http://localhost:16686
+  jaeger:
+    image: jaegertracing/all-in-one:1.62.0
+    container_name: reserveflow-jaeger
+    environment:
+      COLLECTOR_OTLP_ENABLED: "true"
+    ports:
+      - "16686:16686" # Jaeger UI
+      - "4317:4317"   # OTLP gRPC (trace ingest)
+      - "4318:4318"   # OTLP HTTP (trace ingest)
+    networks:
+      - reserveflow
+
+  # Metric storage and querying. The OTLP receiver is enabled (--web.enable-otlp-receiver).
+  # OTLP ingestion endpoint: http://localhost:9090/api/v1/otlp/v1/metrics
+  # UI: http://localhost:9090
+  prometheus:
+    image: prom/prometheus:v3.1.0
+    container_name: reserveflow-prometheus
+    command:
+      - "--config.file=/etc/prometheus/prometheus.yml"
+      - "--web.enable-otlp-receiver"
+    volumes:
+      - ./docker/prometheus/prometheus.yml:/etc/prometheus/prometheus.yml:ro
+      - reserveflow_prometheus:/prometheus
+    ports:
+      - "9090:9090"
+    networks:
+      - reserveflow
+
+  # Dashboard (http://localhost:3000, anonymous access enabled)
+  grafana:
+    image: grafana/grafana:11.4.0
+    container_name: reserveflow-grafana
+    environment:
+      GF_SECURITY_ADMIN_USER: admin
+      GF_SECURITY_ADMIN_PASSWORD: admin
+      GF_AUTH_ANONYMOUS_ENABLED: "true"
+      GF_AUTH_ANONYMOUS_ORG_ROLE: Admin
+    volumes:
+      - ./docker/grafana/provisioning:/etc/grafana/provisioning:ro
+      - ./docker/grafana/dashboards:/var/lib/grafana/dashboards:ro
+      - reserveflow_grafana:/var/lib/grafana
+    ports:
+      - "3000:3000"
+    depends_on:
+      - prometheus
+      - jaeger
+    networks:
+      - reserveflow
 
 volumes:
   reserveflow_pgdata:
+  reserveflow_prometheus:
+  reserveflow_grafana:
+
+networks:
+  reserveflow:
+    driver: bridge

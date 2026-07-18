@@ -1,5 +1,7 @@
+using System.Diagnostics;
 using FluentValidation;
 using ReserveFlow.Application.Abstractions.Authentication;
+using ReserveFlow.Application.Diagnostics;
 using ReserveFlow.Application.Exceptions;
 using ReserveFlow.Application.Messaging;
 using ReserveFlow.Domain.Abstractions;
@@ -32,6 +34,8 @@ public class RegisterUserCommandHandler:ICommandHandler<RegisterUserCommand,Guid
 
     public async Task<Guid> HandleAsync(RegisterUserCommand command, CancellationToken cancellationToken)
     {
+        using var activity = ApplicationDiagnostics.ActivitySource.StartActivity("RegisterUser");
+
         var validation = await _validator.ValidateAsync(command, cancellationToken);
         if (!validation.IsValid)
         {
@@ -59,7 +63,9 @@ public class RegisterUserCommandHandler:ICommandHandler<RegisterUserCommand,Guid
         _userRepository.Add(user);
         await _unitOfWork.SaveChangesAsync(cancellationToken);
 
+        activity?.SetTag("reserveflow.user.id", user.Id);
+        ApplicationDiagnostics.UsersRegistered.Add(1);
+
         return user.Id;
-        
     }
 }

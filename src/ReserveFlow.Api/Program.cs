@@ -8,7 +8,7 @@ builder.Services.AddOptions<HttpsOptions>()
     .Bind(builder.Configuration.GetSection(HttpsOptions.SectionName));
 
 builder.Services.AddApplication();
-builder.Services.AddInfrastructure(builder.Configuration);
+builder.Services.AddInfrastructure(builder.Configuration, builder.Environment);
 builder.Services.AddControllers();
 builder.Services.AddOpenApi();
 

@@ -7,16 +7,17 @@
   </PropertyGroup>
 
   <ItemGroup>
-    <!-- analyzers: XML comment source generator, OpenApi 2.7.5+ ile CS0200 üretir -->
+    <!-- Analyzers: the XML comment source generator causes CS0200 with OpenAPI 2.7.5+. -->
     <PackageReference Include="Microsoft.AspNetCore.OpenApi" Version="10.0.9">
       <ExcludeAssets>analyzers</ExcludeAssets>
     </PackageReference>
-    <!-- GHSA-v5pm-xwqc-g5wc; AspNetCore.OpenApi 10 ile uyumlu patched 2.x -->
+    <!-- GHSA-v5pm-xwqc-g5wc; patched 2.x version compatible with AspNetCore.OpenApi 10. -->
     <PackageReference Include="Microsoft.OpenApi" Version="2.7.5" />
     <PackageReference Include="Microsoft.EntityFrameworkCore.Design" Version="10.0.9">
       <PrivateAssets>all</PrivateAssets>
       <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
     </PackageReference>
+
     <PackageReference Include="Swashbuckle.AspNetCore.SwaggerUI" Version="10.2.3" />
   </ItemGroup>
 

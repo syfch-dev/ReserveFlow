@@ -1,0 +1,10 @@
+global:
+  scrape_interval: 15s
+  evaluation_interval: 15s
+
+# Application metrics are pushed to Prometheus's OTLP receiver, so a separate
+# scrape job is unnecessary. Only Prometheus's internal metrics are collected below.
+scrape_configs:
+  - job_name: prometheus
+    static_configs:
+      - targets: ["localhost:9090"]
