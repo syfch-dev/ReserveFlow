@@ -8,6 +8,7 @@
 
   <ItemGroup>
     <!-- Analyzers: the XML comment source generator causes CS0200 with OpenAPI 2.7.5+. -->
+    <PackageReference Include="Microsoft.AspNetCore.Authentication.JwtBearer" Version="10.0.10" />
     <PackageReference Include="Microsoft.AspNetCore.OpenApi" Version="10.0.9">
       <ExcludeAssets>analyzers</ExcludeAssets>
     </PackageReference>

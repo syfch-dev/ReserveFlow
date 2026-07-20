@@ -23,6 +23,7 @@ public sealed class ExceptionHandlingMiddleware(RequestDelegate next)
         {
             ValidationException => (StatusCodes.Status400BadRequest, "Validation failed"),
             ConflictException => (StatusCodes.Status409Conflict, "Conflict"),
+            UnauthorizedException => (StatusCodes.Status401Unauthorized, "Unauthorized"),
             _ => (StatusCodes.Status500InternalServerError, "An unexpected error occurred")
         };
 

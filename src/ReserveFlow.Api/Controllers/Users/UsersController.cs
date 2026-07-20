@@ -1,6 +1,7 @@
 using Microsoft.AspNetCore.Mvc;
 using ReserveFlow.Api.Controllers.Users;
 using ReserveFlow.Application.Messaging;
+using ReserveFlow.Application.Users.LoginUser;
 using ReserveFlow.Application.Users.RegisterUser;
 
 namespace ReserveFlow.Api.Controllers;
@@ -24,6 +25,21 @@ public sealed class UsersController() : ControllerBase
         return CreatedAtAction(
             nameof(Register),
             new RegisterUserResponse(userId));
+    }
+
+    [HttpPost("login")]
+    [ProducesResponseType(typeof(LoginUserResponse), StatusCodes.Status200OK)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status400BadRequest)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status401Unauthorized)]
+    public async Task<ActionResult<LoginUserResponse>> Login(
+        [FromBody] LoginUserRequest request,
+        [FromServices] ICommandHandler<LoginUserCommand, string> loginUserCommandHandler,
+        CancellationToken cancellationToken)
+    {
+        var command = new LoginUserCommand(request.Email, request.Password);
+        var token = await loginUserCommandHandler.HandleAsync(command, cancellationToken);
+
+        return Ok(new LoginUserResponse(token));
     }
 }
 

@@ -39,6 +39,9 @@ if (httpsOptions.Port.HasValue)
     app.UseHttpsRedirection();
 }
 
+app.UseAuthentication();
+app.UseAuthorization();
+
 app.MapControllers();
 
 app.Run();
